@@ -1,0 +1,44 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm ci",
+  "framework": "nextjs",
+  "env": [
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_URL",
+      "value": "@NEXT_PUBLIC_SUPABASE_URL",
+      "type": "plaintext"
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "value": "@NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "type": "plaintext"
+    },
+    {
+      "key": "SUPABASE_SERVICE_ROLE_KEY",
+      "value": "@SUPABASE_SERVICE_ROLE_KEY",
+      "type": "secret"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "@DATABASE_URL",
+      "type": "secret"
+    },
+    {
+      "key": "NEXT_PUBLIC_APP_URL",
+      "value": "@NEXT_PUBLIC_APP_URL",
+      "type": "plaintext"
+    },
+    {
+      "key": "APP_SECRET",
+      "value": "@APP_SECRET",
+      "type": "secret"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/health",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
