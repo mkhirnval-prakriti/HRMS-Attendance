@@ -1,0 +1,45 @@
+﻿name: VPS Production Deploy
+
+on:
+  push:
+    branches:
+      - deploy/crm-production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+
+          script: |
+            cd /var/www
+
+            if [ ! -d "crmprakritiherbs" ]; then
+              git clone https://github.com/mkhirnval-prakriti/HRMS-Attendance.git crmprakritiherbs
+            fi
+
+            cd crmprakritiherbs
+
+            git fetch origin
+            git checkout deploy/crm-production
+            git pull origin deploy/crm-production
+
+            docker compose down || true
+            docker compose up -d --build
+
+            sudo cp nginx/crmprakritiherbs.conf /etc/nginx/sites-available/crmprakritiherbs.in
+
+            sudo ln -sf /etc/nginx/sites-available/crmprakritiherbs.in /etc/nginx/sites-enabled/crmprakritiherbs.in
+
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+            sudo certbot --nginx -d crmprakritiherbs.in --non-interactive --agree-tos -m admin@crmprakritiherbs.in || true
