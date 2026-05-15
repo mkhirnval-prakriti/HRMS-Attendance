@@ -11,9 +11,9 @@ export function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (n) => cookieStore.get(n)?.value,
-        set: (n, v, o) => { try { cookieStore.set({ name: n, value: v, ...o }) } catch {} },
-        remove: (n, o) => { try { cookieStore.set({ name: n, value: '', ...o }) } catch {} },
+        get: (n: string) => cookieStore.get(n)?.value,
+        set: (n: string, v: string, o: any) => { try { cookieStore.set({ name: n, value: v, ...o }) } catch {} },
+        remove: (n: string, o: any) => { try { cookieStore.set({ name: n, value: '', ...o }) } catch {} },
       },
     }
   )

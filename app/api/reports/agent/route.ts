@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         confirmed: sql<number>`SUM(CASE WHEN ${orders.status}='Confirmed' THEN 1 ELSE 0 END)`,
         cancelled: sql<number>`SUM(CASE WHEN ${orders.status} IN ('Cancelled','Final Cancel','Confirm Cancel','Dealer Cancel') THEN 1 ELSE 0 END)`,
         pending: sql<number>`SUM(CASE WHEN ${orders.status} IN ('Pending','Callback','UNA','Cancel Pending','Confirm Pending') THEN 1 ELSE 0 END)`,
-        revenue: sql<number>`SUM(CAST(${orders.amount} AS NUMERIC))`,
+        revenue: sql<number>`0`,
       })
       .from(orders)
       .leftJoin(users, eq(orders.leadOwnerId, users.id))
