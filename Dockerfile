@@ -1,18 +1,15 @@
-FROM node:20-alpine AS base
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
+﻿FROM node:20-alpine
 
-FROM base AS builder
-RUN npm ci
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
 COPY . .
+
 RUN npm run build
 
-FROM base AS runner
-ENV NODE_ENV=production
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
 EXPOSE 3000
-ENV PORT=3000 HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+
+CMD ["npm","start"]
