@@ -34,10 +34,18 @@ export async function GET(req: NextRequest) {
 
     const data = await db
       .select({
-        id: orders.id, orderId: orders.orderId, patientName: orders.patientName,
-        mobile: orders.mobile, city: orders.city, status: orders.status,
-        amount: orders.amount, followUpDate: orders.followUpDate, notes: orders.notes,
-        stateName: states.name, districtName: districts.name, sourceName: sources.name,
+        id: orders.id,
+        orderId: orders.orderId,
+        patientName: orders.customerName,
+        mobile: orders.contactNumber,
+        city: orders.city,
+        status: orders.status,
+        amount: orders.price,
+        followUpDate: orders.followUpDate,
+        notes: orders.remark,
+        stateName: states.name,
+        districtName: districts.name,
+        sourceName: sources.name,
         ownerName: users.name,
       })
       .from(orders)

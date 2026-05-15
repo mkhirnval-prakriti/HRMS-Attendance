@@ -19,10 +19,13 @@ export async function GET(req: NextRequest) {
 
     const data = await db
       .select({
-        id: auditLogs.id, tableName: auditLogs.tableName,
-        recordId: auditLogs.recordId, action: auditLogs.action,
-        oldValues: auditLogs.oldValues, newValues: auditLogs.newValues,
-        createdAt: auditLogs.createdAt, userName: users.name,
+        id: auditLogs.id,
+        entity: auditLogs.entity,
+        entityId: auditLogs.entityId,
+        action: auditLogs.action,
+        details: auditLogs.details,
+        createdAt: auditLogs.createdAt,
+        userName: users.name,
       })
       .from(auditLogs)
       .leftJoin(users, eq(auditLogs.userId, users.id))
@@ -42,11 +45,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     await db.insert(auditLogs).values({
       userId: body.userId,
-      tableName: body.tableName,
-      recordId: body.recordId,
+      entity: body.entity,
+      entityId: body.entityId,
       action: body.action,
-      oldValues: body.oldValues ? JSON.stringify(body.oldValues) : null,
-      newValues: body.newValues ? JSON.stringify(body.newValues) : null,
+      details: body.details ? JSON.stringify(body.details) : null,
     })
     return NextResponse.json({ success: true })
   } catch (e: any) {

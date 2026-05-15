@@ -1,11 +1,15 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import { formatDateTime } from '@/lib/utils'
 
 type Log = {
-  id: number; tableName: string; recordId: number; action: string
-  oldValues: string | null; newValues: string | null
-  createdAt: string; userName: string
+  id: number
+  entity: string
+  entityId: number | null
+  action: string
+  details: string | null
+  createdAt: string
+  userName: string
 }
 
 export default function AuditLogsClient() {
@@ -33,6 +37,16 @@ export default function AuditLogsClient() {
     UPDATE: 'bg-blue-100 text-blue-800',
     DELETE: 'bg-red-100 text-red-800',
     LOGIN: 'bg-purple-100 text-purple-800',
+  }
+
+  function renderDetails(rawDetails: string | null) {
+    if (!rawDetails) return null
+
+    try {
+      return JSON.stringify(JSON.parse(rawDetails), null, 2)
+    } catch {
+      return rawDetails
+    }
   }
 
   return (
@@ -68,7 +82,7 @@ export default function AuditLogsClient() {
               <tr>
                 <th className="th">Time</th>
                 <th className="th">User</th>
-                <th className="th">Table</th>
+                <th className="th">Entity</th>
                 <th className="th">Record ID</th>
                 <th className="th">Action</th>
                 <th className="th">Details</th>
@@ -76,19 +90,19 @@ export default function AuditLogsClient() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {logs.map(log => (
-                <>
-                  <tr key={log.id} className="hover:bg-gray-50">
+                <Fragment key={log.id}>
+                  <tr className="hover:bg-gray-50">
                     <td className="table-cell text-gray-500 text-xs">{formatDateTime(log.createdAt)}</td>
                     <td className="table-cell font-medium">{log.userName || '—'}</td>
-                    <td className="table-cell font-mono text-xs">{log.tableName}</td>
-                    <td className="table-cell text-gray-500">#{log.recordId}</td>
+                    <td className="table-cell font-mono text-xs">{log.entity}</td>
+                    <td className="table-cell text-gray-500">#{log.entityId ?? '—'}</td>
                     <td className="table-cell">
                       <span className={`badge ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-700'}`}>
                         {log.action}
                       </span>
                     </td>
                     <td className="table-cell">
-                      {(log.oldValues || log.newValues) && (
+                      {log.details && (
                         <button
                           onClick={() => setExpanded(expanded === log.id ? null : log.id)}
                           className="text-green-700 hover:underline text-xs"
@@ -101,24 +115,13 @@ export default function AuditLogsClient() {
                   {expanded === log.id && (
                     <tr key={`${log.id}-detail`} className="bg-gray-50">
                       <td colSpan={6} className="px-4 py-3">
-                        <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                          {log.oldValues && (
-                            <div>
-                              <p className="font-semibold text-red-600 mb-1">Before:</p>
-                              <pre className="bg-red-50 p-2 rounded text-red-800 overflow-auto max-h-48">{JSON.stringify(JSON.parse(log.oldValues), null, 2)}</pre>
-                            </div>
-                          )}
-                          {log.newValues && (
-                            <div>
-                              <p className="font-semibold text-green-600 mb-1">After:</p>
-                              <pre className="bg-green-50 p-2 rounded text-green-800 overflow-auto max-h-48">{JSON.stringify(JSON.parse(log.newValues), null, 2)}</pre>
-                            </div>
-                          )}
-                        </div>
+                        <pre className="bg-slate-50 p-3 rounded text-xs font-mono overflow-auto max-h-64">
+                          {renderDetails(log.details)}
+                        </pre>
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

@@ -3,7 +3,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm ci",
   "framework": "nextjs",
-  "env": [
+  "env": {
     {
       "key": "NEXT_PUBLIC_SUPABASE_URL",
       "value": "@NEXT_PUBLIC_SUPABASE_URL",
@@ -40,5 +40,5 @@
       "path": "/api/health",
       "schedule": "*/5 * * * *"
     }
-  ]
+  }
 }

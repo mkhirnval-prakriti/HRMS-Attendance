@@ -5,7 +5,7 @@ import { Plus, Pencil, UserCheck, UserX, Loader2 } from 'lucide-react'
 import { formatDate, ROLES } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
-interface User { id:number;name:string;email:string;phone:string|null;role:string;isActive:boolean;createdAt:string }
+interface User { id:number;name:string;email:string;phone:string|null;role:string;isActive:boolean;createdAt:string|Date }
 
 export default function UsersClient({ users: initUsers }: { users: User[] }) {
   const router = useRouter()
