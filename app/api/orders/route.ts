@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { orders, users, dealers, sources, states, districts } from '@/lib/db/schema'
 import { eq, and, ilike, gte, lte, desc, count } from 'drizzle-orm'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, handleApiError } from '@/lib/auth'
+import { rateLimit, LIMITS } from '@/lib/security/rate-limit'
+import { getClientIp } from '@/lib/security/audit'
 import { generateOrderId } from '@/lib/utils'
 
 export async function GET(req: NextRequest) {
+  // Rate limit
+  const rl = rateLimit(req.headers.get('x-forwarded-for') ?? '127.0.0.1', LIMITS.read)
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
   try {
     const user = await requireAuth()
     const { searchParams } = new URL(req.url)
