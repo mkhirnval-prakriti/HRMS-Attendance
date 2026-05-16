@@ -74,6 +74,11 @@ export const orders = pgTable('orders', {
   paymentStatus: paymentStatusEnum('payment_status').default('Pending'),
   paymentId:     varchar('payment_id', { length: 100 }),
   isDeleted:     boolean('is_deleted').default(false).notNull(),
+  leadOwnerId:   integer('lead_owner_id'),
+  zmId:          integer('zm_id'),
+  dateTime:      timestamp('date_time').defaultNow(),
+  callbackDate:  date('callback_date'),
+  expectedDate:  date('expected_date'),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
   updatedAt:     timestamp('updated_at').defaultNow().notNull(),
 }, (t) => ({
@@ -250,6 +255,32 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   followUps: many(followUps),
   invoices:  many(invoices),
 }))
+
+
+// ── States & Districts (for order location) ────────────────
+export const states = pgTable('states', {
+  id:   serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  code: varchar('code', { length: 10 }),
+})
+
+export const districts = pgTable('districts', {
+  id:      serial('id').primaryKey(),
+  stateId: integer('state_id').notNull(),
+  name:    varchar('name', { length: 100 }).notNull(),
+})
+
+// ── Items (Products) ───────────────────────────────────────
+export const items = pgTable('items', {
+  id:          serial('id').primaryKey(),
+  name:        varchar('name', { length: 255 }).notNull(),
+  sku:         varchar('sku', { length: 100 }).unique(),
+  price:       decimal('price', { precision: 10, scale: 2 }),
+  description: text('description'),
+  isActive:    boolean('is_active').default(true).notNull(),
+  createdAt:   timestamp('created_at').defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at').defaultNow().notNull(),
+})
 
 // Aliases for backward compatibility
 export { payroll as salaryRecords }
