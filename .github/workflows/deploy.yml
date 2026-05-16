@@ -26,7 +26,7 @@ jobs:
           command_timeout: 18m
           script: |
             APP=/var/www/crmprakritiherbs
-            LOG_DIR=/root/.pm2/logs
+            ENV_FILE=$APP/.env
 
             echo "CRM DEPLOY $(date '+%Y-%m-%d %H:%M')"
 
@@ -35,30 +35,41 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" 2>/dev/null || true
             export PATH="/usr/local/bin:/usr/bin:$HOME/.local/bin:$PATH"
 
-            # Verify APP 1 untouched
+            # Load .env into environment (for build)
+            if [ -f "$ENV_FILE" ]; then
+              set -a
+              source "$ENV_FILE"
+              set +a
+              echo ".env loaded"
+            else
+              echo "ERROR: $ENV_FILE not found!"
+              exit 1
+            fi
+
+            # Verify App1 untouched
             API1=$(curl -sf http://localhost:3001/api/healthz 2>/dev/null || echo FAIL)
-            echo "App1 health: $API1"
+            echo "App1: $API1"
 
-            # Backup
-            BACKUP_DIR=/var/backups/crm
-            mkdir -p $BACKUP_DIR
+            # Backup .next/standalone
+            BACKUP=/var/backups/crm
+            mkdir -p $BACKUP
             TS=$(date +%Y%m%d-%H%M%S)
-            tar -czf $BACKUP_DIR/pre-$TS.tar.gz $APP/.next/standalone 2>/dev/null || true
-            ls -t $BACKUP_DIR/*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
+            tar -czf $BACKUP/pre-$TS.tar.gz $APP/.next/standalone 2>/dev/null || true
+            ls -t $BACKUP/*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
 
-            # Pull latest
+            # Git pull
             echo "[1/4] Git pull..."
             cd $APP
             git fetch origin master --quiet
             git reset --hard origin/master --quiet
             git log -1 --oneline
 
-            # Install deps
-            echo "[2/4] npm install..."
+            # Install
+            echo "[2/4] npm ci..."
             npm ci --prefer-offline --silent 2>&1 | tail -2
 
-            # Build
-            echo "[3/4] Next.js build..."
+            # Build (env vars already loaded via source above)
+            echo "[3/4] Build..."
             BUILD_OUT=$(npm run build 2>&1)
             BUILD_EXIT=$?
 
@@ -66,14 +77,14 @@ jobs:
               echo "BUILD FAILED:"
               echo "$BUILD_OUT" | tail -40
               echo "Rolling back..."
-              LATEST=$(ls -t $BACKUP_DIR/*.tar.gz 2>/dev/null | head -1)
+              LATEST=$(ls -t $BACKUP/*.tar.gz 2>/dev/null | head -1)
               [ -n "$LATEST" ] && tar -xzf $LATEST -C $APP 2>/dev/null || true
               pm2 restart crmprakritiherbs --update-env 2>/dev/null || true
               exit 1
             fi
-            echo "Build succeeded"
+            echo "Build OK"
 
-            # Copy standalone
+            # Copy standalone server
             cp -r $APP/.next/standalone/. $APP/
 
             # PM2 restart
@@ -93,17 +104,14 @@ jobs:
             # Health checks
             LOCAL=$(curl -sf http://localhost:3000/api/health 2>/dev/null && echo OK || echo FAIL)
             HTTPS=$(curl -sk https://crmprakritiherbs.in/api/health -o /dev/null -w "%{http_code}" 2>/dev/null)
-            APP1=$(curl -sf http://localhost:3001/api/healthz 2>/dev/null || echo FAIL)
+            APP1_A=$(curl -sf http://localhost:3001/api/healthz 2>/dev/null || echo FAIL)
 
-            echo "Local :3000 => $LOCAL"
-            echo "HTTPS CRM   => $HTTPS"
-            echo "App1 intact => $APP1"
+            echo "Local => $LOCAL | HTTPS => $HTTPS | App1 => $APP1_A"
             pm2 list
 
             if [ "$LOCAL" = "OK" ] && [ "$HTTPS" = "200" ]; then
-              echo "CRM DEPLOY COMPLETE"
-              echo "https://crmprakritiherbs.in"
+              echo "DEPLOY COMPLETE: https://crmprakritiherbs.in"
             else
-              echo "Health check warning"
-              tail -20 $LOG_DIR/crmprakritiherbs-error.log 2>/dev/null || true
+              echo "WARNING: health check - LOCAL=$LOCAL HTTPS=$HTTPS"
+              tail -15 /root/.pm2/logs/crmprakritiherbs-error.log 2>/dev/null || true
             fi
