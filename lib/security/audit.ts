@@ -14,16 +14,19 @@ export type AuditAction =
   | 'export_data'
   | 'settings_update'
   | 'password_change'
+  | 'attendance_create' | 'attendance_update'
+  | 'leave_create' | 'leave_approve' | 'leave_reject'
+  | 'payroll_create' | 'payroll_approve'
 
 export interface AuditContext {
-  userId:     string
-  userEmail?: string
-  action:     AuditAction
-  resource?:  string
+  userId:      string
+  userEmail?:  string
+  action:      AuditAction
+  resource?:   string
   resourceId?: string | number
-  details?:   Record<string, unknown>
-  ipAddress?: string
-  userAgent?: string
+  details?:    Record<string, unknown>
+  ipAddress?:  string
+  userAgent?:  string
 }
 
 export async function logAudit(ctx: AuditContext): Promise<void> {
@@ -33,26 +36,19 @@ export async function logAudit(ctx: AuditContext): Promise<void> {
       userEmail:  ctx.userEmail ?? null,
       action:     ctx.action,
       resource:   ctx.resource ?? null,
-      resourceId: ctx.resourceId ? String(ctx.resourceId) : null,
-      details:    ctx.details ? JSON.stringify(ctx.details) : null,
+      resourceId: ctx.resourceId != null ? String(ctx.resourceId) : null,
+      details:    ctx.details ?? null,
       ipAddress:  ctx.ipAddress ?? null,
       userAgent:  ctx.userAgent ?? null,
       createdAt:  new Date(),
     })
   } catch (err) {
-    // Never let audit logging break the main flow
-    console.error('[Audit] Failed to log:', err)
+    // Never throw — audit failure should not break the request
+    console.error('[Audit] Failed to log action:', ctx.action, err)
   }
 }
 
-// Extract IP from request
-export function getClientIp(req: Request): string {
-  const forwarded = req.headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0].trim()
-  return req.headers.get('x-real-ip') ?? 'unknown'
-}
-
-// Extract user agent
-export function getUserAgent(req: Request): string {
-  return req.headers.get('user-agent') ?? 'unknown'
+/** Fire-and-forget audit — does not await */
+export function auditBackground(ctx: AuditContext): void {
+  logAudit(ctx).catch(() => {})
 }
