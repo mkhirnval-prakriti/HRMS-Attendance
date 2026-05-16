@@ -139,3 +139,11 @@ export function withRole<T>(
     }
   }
 }
+
+// Alias — some pages use getCurrentUser instead of requireAuth
+export const getCurrentUser = requireAuth
+
+// requireAdmin — shortcut for Admin-only routes  
+export async function requireAdmin(): Promise<AuthUser> {
+  return requireRole('Admin')
+}
