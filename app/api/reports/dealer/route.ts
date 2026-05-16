@@ -6,7 +6,7 @@ import { requireRole } from '@/lib/auth'
 
 export async function GET(_req: NextRequest) {
   try {
-    await requireRole(['Admin', 'ZM'])
+    await requireRole('Admin', 'ZM')
 
     const rows = await db
       .select({
