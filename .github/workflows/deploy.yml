@@ -1,28 +1,124 @@
-name: Deploy to VPS
+name: Deploy CRM to VPS
 
 on:
   push:
-      branches:
-            - master
-                  - main
+    branches: [ master ]
+  workflow_dispatch:
 
-                  jobs:
-                    deploy:
-                        runs-on: ubuntu-latest
+concurrency:
+  group: crm-deploy
+  cancel-in-progress: false
 
-                            steps:
-                                  - uses: actions/checkout@v3
+jobs:
+  deploy:
+    name: Build & Deploy CRM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-                                        - name: Deploy to VPS
-                                                uses: appleboy/ssh-action@master
-                                                        with:
-                                                                  host: ${{ secrets.HOST }}
-                                                                            username: ${{ secrets.SSH_USER }}
-                                                                                      key: ${{ secrets.SSH_KEY }}
-                                                                                                port: ${{ secrets.SSH_PORT }}
-                                                                                                          script: |
-                                                                                                                      cd /var/www/prakritiherbs.in
-                                                                                                                                  git pull origin master
-                                                                                                                                              pnpm install
-                                                                                                                                                          pnpm build
-                                                                                                                                                                      pm2 restart all
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:            ${{ secrets.VPS_HOST }}
+          username:        ${{ secrets.VPS_USER }}
+          password:        ${{ secrets.VPS_PASSWORD }}
+          key:             ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          port:            ${{ secrets.VPS_PORT }}
+          command_timeout: 18m
+          script: |
+            APP=/var/www/crmprakritiherbs
+            LOG_DIR=/root/.pm2/logs
+
+            echo "╔══════════════════════════════════════╗"
+            echo "║  CRM DEPLOY — $(date '+%Y-%m-%d %H:%M')  ║"
+            echo "╚══════════════════════════════════════╝"
+
+            # PATH setup
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" 2>/dev/null || true
+            export PATH="/usr/local/bin:/usr/bin:$HOME/.local/bin:$PATH"
+
+            # Verify APP 1 is untouched
+            API1=$(curl -sf http://localhost:3001/api/healthz 2>/dev/null || echo FAIL)
+            echo "  App1 check: $API1"
+
+            # Backup
+            BACKUP_DIR=/var/backups/crm
+            mkdir -p $BACKUP_DIR
+            TS=$(date +%Y%m%d-%H%M%S)
+            tar -czf $BACKUP_DIR/pre-deploy-$TS.tar.gz               $APP/.next/standalone 2>/dev/null || true
+            ls -t $BACKUP_DIR/*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
+
+            # Pull latest
+            echo ""
+            echo "▶ [1/4] Git pull..."
+            cd $APP
+            git fetch origin master --quiet
+            git reset --hard origin/master --quiet
+            git log -1 --oneline
+
+            # Install deps
+            echo ""
+            echo "▶ [2/4] npm install..."
+            npm ci --prefer-offline --silent 2>&1 | tail -3
+
+            # Build
+            echo ""
+            echo "▶ [3/4] Next.js build..."
+            BUILD_LOG=$(npm run build 2>&1)
+            BUILD_EXIT=$?
+
+            if [ $BUILD_EXIT -ne 0 ]; then
+              echo "❌ BUILD FAILED:"
+              echo "$BUILD_LOG" | tail -30
+              echo ""
+              echo "🔄 Rolling back..."
+              LATEST_BACKUP=$(ls -t $BACKUP_DIR/*.tar.gz 2>/dev/null | head -1)
+              [ -n "$LATEST_BACKUP" ] && tar -xzf $LATEST_BACKUP -C $APP 2>/dev/null || true
+              pm2 restart crmprakritiherbs --update-env 2>/dev/null || true
+              exit 1
+            fi
+
+            echo "  ✓ Build succeeded"
+
+            # Copy standalone server
+            cp -r $APP/.next/standalone/. $APP/
+
+            # Restart PM2
+            echo ""
+            echo "▶ [4/4] PM2 restart..."
+            if pm2 describe crmprakritiherbs &>/dev/null; then
+              pm2 restart crmprakritiherbs --update-env
+            else
+              pm2 start $APP/.next/standalone/server.js \
+                --name crmprakritiherbs \
+                --env NODE_ENV=production \
+                --max-memory-restart 400M
+            fi
+            pm2 save --force
+
+            sleep 5
+
+            # Health check
+            echo ""
+            echo "▶ Health checks..."
+            LOCAL=$(curl -sf http://localhost:3000/api/health 2>/dev/null && echo OK || echo FAIL)
+            HTTPS=$(curl -sk https://crmprakritiherbs.in/api/health -o /dev/null -w %{http_code} 2>/dev/null)
+            APP1_AFTER=$(curl -sf http://localhost:3001/api/healthz 2>/dev/null || echo FAIL)
+
+            echo "  Local :3000  → $LOCAL"
+            echo "  HTTPS CRM    → HTTP $HTTPS"
+            echo "  App1 intact  → $APP1_AFTER"
+
+            pm2 list
+
+            if [ "$LOCAL" = "OK" ] && [ "$HTTPS" = "200" ]; then
+              echo ""
+              echo "╔══════════════════════════════════════╗"
+              echo "║  ✅ CRM DEPLOY COMPLETE               ║"
+              echo "║  https://crmprakritiherbs.in          ║"
+              echo "╚══════════════════════════════════════╝"
+            else
+              echo "⚠ Health check warning — check logs"
+              tail -20 $LOG_DIR/crmprakritiherbs-error.log 2>/dev/null || true
+            fi
