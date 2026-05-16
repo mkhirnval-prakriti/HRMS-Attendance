@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { orders } from '@/lib/db/schema'
-import { getCurrentUser } from '@/lib/auth'
+import { requireAuth as getCurrentUser } from '@/lib/auth'
 import { sql, count, and, eq, gte } from 'drizzle-orm'
 import DashboardClient from './client'
 import { redirect } from 'next/navigation'
