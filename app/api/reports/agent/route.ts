@@ -6,7 +6,7 @@ import { requireRole } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(['Admin', 'ZM'])
+    await requireRole('Admin', 'ZM')
     const { searchParams } = new URL(req.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
