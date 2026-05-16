@@ -207,6 +207,15 @@ export const invoices = pgTable('invoices', {
   createdAt:   timestamp('created_at').defaultNow().notNull(),
 })
 
+
+// ── Sources (Lead sources) ─────────────────────────────────
+export const sources = pgTable('sources', {
+  id:        serial('id').primaryKey(),
+  name:      varchar('name', { length: 100 }).notNull().unique(),
+  isActive:  boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ── Relations ──────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many }) => ({
   orders:     many(orders),
