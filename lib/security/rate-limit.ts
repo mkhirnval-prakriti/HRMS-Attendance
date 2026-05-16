@@ -4,14 +4,14 @@
  */
 
 interface RateLimitEntry {
-  count: number
+  count:   number
   resetAt: number
 }
 
 const store = new Map<string, RateLimitEntry>()
 
-// Cleanup every 5 minutes
-if (typeof setInterval !== 'undefined') {
+// Auto-cleanup every 5 minutes
+if (typeof globalThis !== 'undefined' && typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now()
     for (const [key, entry] of store.entries()) {
@@ -21,16 +21,16 @@ if (typeof setInterval !== 'undefined') {
 }
 
 export interface RateLimitConfig {
-  windowMs: number   // e.g. 60_000 = 1 minute
-  max: number        // max requests per window
+  windowMs:    number   // e.g. 60_000 = 1 minute
+  max:         number   // max requests per window
   identifier?: string
 }
 
 export interface RateLimitResult {
-  success: boolean
-  limit: number
+  success:   boolean
+  limit:     number
   remaining: number
-  resetAt: number
+  resetAt:   number
 }
 
 export function rateLimit(
@@ -49,23 +49,18 @@ export function rateLimit(
   entry.count++
 
   return {
-    success: entry.count <= config.max,
-    limit: config.max,
+    success:   entry.count <= config.max,
+    limit:     config.max,
     remaining: Math.max(0, config.max - entry.count),
-    resetAt: entry.resetAt,
+    resetAt:   entry.resetAt,
   }
 }
 
-// Preset configs
+// ── Preset rate limit configs ──────────────────────────────
 export const LIMITS = {
-  // Auth endpoints — strict
-  auth:    { windowMs: 15 * 60_000, max: 10,  identifier: 'auth' },
-  // General API — moderate
-  api:     { windowMs: 60_000,       max: 120, identifier: 'api' },
-  // Export endpoints — loose
-  export:  { windowMs: 60_000,       max: 10,  identifier: 'export' },
-  // Bulk operations — very strict
-  bulk:    { windowMs: 60_000,       max: 5,   identifier: 'bulk' },
-  // Dashboard/read — generous
-  read:    { windowMs: 60_000,       max: 300, identifier: 'read' },
+  auth:   { windowMs: 15 * 60_000, max: 10,  identifier: 'auth'   },  // 10/15min — login
+  api:    { windowMs: 60_000,       max: 120, identifier: 'api'    },  // 120/min  — general API
+  export: { windowMs: 60_000,       max: 10,  identifier: 'export' },  // 10/min   — exports
+  bulk:   { windowMs: 60_000,       max: 5,   identifier: 'bulk'   },  // 5/min    — bulk ops
+  read:   { windowMs: 60_000,       max: 300, identifier: 'read'   },  // 300/min  — dashboard
 } satisfies Record<string, RateLimitConfig>
