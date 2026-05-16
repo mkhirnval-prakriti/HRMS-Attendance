@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { salaryRecords, attendance, users } from '@/lib/db/schema'
+import { payroll as salaryRecords, attendance, users } from '@/lib/db/schema'
 import { eq, and, gte, lte, count } from 'drizzle-orm'
 import { requireRole, handleApiError } from '@/lib/auth'
 import { rateLimit, LIMITS } from '@/lib/security/rate-limit'
