@@ -250,3 +250,6 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   followUps: many(followUps),
   invoices:  many(invoices),
 }))
+
+// Aliases for backward compatibility
+export { payroll as salaryRecords }
