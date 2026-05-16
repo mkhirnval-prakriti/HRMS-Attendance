@@ -1,46 +1,38 @@
+/**
+ * Health Check — Prakriti Herbs CRM
+ * GET /api/health
+ * Public endpoint for load balancers, monitoring
+ */
 import { NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { sql } from 'drizzle-orm'
+
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET() {
+  const start = Date.now()
+
   try {
-    // Check basic environment variables
-    const requiredEnv = [
-      'NEXT_PUBLIC_SUPABASE_URL',
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-      'DATABASE_URL'
-    ]
+    // Quick DB ping
+    await db.execute(sql`SELECT 1`)
+    const dbMs = Date.now() - start
 
-    const missingEnv = requiredEnv.filter(
-      (env) => !process.env[env]
-    )
-
-    const status = {
-      status: 'ok',
+    return NextResponse.json({
+      status:    'ok',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      checks: {
-        supabase: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        database: !!process.env.DATABASE_URL,
-        secrets: !!process.env.APP_SECRET,
-      },
-      warnings: missingEnv.length > 0 ? missingEnv : undefined,
-    }
-
-    return NextResponse.json(status, {
-      status: missingEnv.length > 0 ? 503 : 200,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'application/json',
-      },
+      uptime:    process.uptime(),
+      db:        { status: 'ok', latencyMs: dbMs },
+      version:   process.env.npm_package_version ?? '1.0.0',
     })
-  } catch (error) {
-    console.error('Health check error:', error)
+  } catch (err) {
     return NextResponse.json(
       {
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        status:    'degraded',
+        timestamp: new Date().toISOString(),
+        db:        { status: 'error', error: String(err) },
       },
-      { status: 500 }
+      { status: 503 }
     )
   }
 }
