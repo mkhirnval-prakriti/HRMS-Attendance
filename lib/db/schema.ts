@@ -208,6 +208,26 @@ export const invoices = pgTable('invoices', {
 })
 
 
+
+// ── Payments ───────────────────────────────────────────────
+export const payments = pgTable('payments', {
+  id:          serial('id').primaryKey(),
+  orderId:     integer('order_id').notNull(),
+  dealerId:    integer('dealer_id'),
+  amount:      decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  mode:        varchar('mode', { length: 50 }),        // Cash, UPI, NEFT, etc.
+  reference:   varchar('reference', { length: 100 }),
+  status:      paymentStatusEnum('status').default('Pending').notNull(),
+  notes:       text('notes'),
+  paidAt:      timestamp('paid_at'),
+  createdBy:   integer('created_by'),
+  createdAt:   timestamp('created_at').defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at').defaultNow().notNull(),
+}, (t) => ({
+  orderIdx:  index('payments_order_idx').on(t.orderId),
+  statusIdx: index('payments_status_idx').on(t.status),
+}))
+
 // ── Sources (Lead sources) ─────────────────────────────────
 export const sources = pgTable('sources', {
   id:        serial('id').primaryKey(),
